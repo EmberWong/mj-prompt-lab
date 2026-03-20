@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>MJ Prompt 学习本</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Courier New', monospace; background: #f5f2ec; color: #1a1814; min-height: 100vh; }
+
+nav { background: #1a1814; padding: 12px 24px; display: flex; align-items: center; gap: 8px; }
+nav h1 { color: #f5f2ec; font-size: 13px; font-weight: 700; letter-spacing: .06em; margin-right: auto; }
+nav button { background: transparent; border: none; color: rgba(245,242,236,.5); font-family: inherit; font-size: 12px; cursor: pointer; padding: 6px 14px; border-radius: 4px; }
+nav button:hover { color: #f5f2ec; }
+nav button.active { background: #c8622a; color: #f5f2ec; }
+
+.page { display: none; padding: 24px; max-width: 1100px; margin: 0 auto; }
+.page.on { display: block; }
+
+.analyze-grid { display: grid; grid-template-columns: 1fr 300px; gap: 20px; }
+
+.box { background: #ede9e0; border: 1px solid #d4cfc4; border-radius: 8px; overflow: hidden; }
+.bh { padding: 10px 14px; background: #e6e2d8; border-bottom: 1px solid #d4cfc4; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: #8a857e; }
+.bf { padding: 10px 14px; border-top: 1px solid #d4cfc4; display: flex; gap: 8px; align-items: center; }
+
+#promptTA { width: 100%; min-height: 110px; padding: 14px; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.7; background: transparent; border: none; outline: none; resize: vertical; color: #1a1814; }
+
+.btn { font-family: inherit; font-size: 11px; padding: 6px 14px; border-radius: 5px; border: 1px solid #c4bfb4; background: #f5f2ec; color: #4a4640; cursor: pointer; white-space: nowrap; }
+.btn:hover { border-color: #8a857e; }
+.btn-dk { background: #1a1814; color: #f5f2ec; border-color: #1a1814; }
+.btn-dk:hover { background: #3a3530; }
+.hint-txt { font-size: 10px; color: #aaa49e; margin-left: auto; }
+
+.legend { display: flex; gap: 14px; padding: 10px 14px; font-size: 11px; color: #8a857e; border-top: 1px solid #d4cfc4; }
+.legend span { display: flex; align-items: center; gap: 5px; }
+.ldot { width: 11px; height: 11px; border-radius: 2px; display: inline-block; flex-shrink: 0; }
+
+#tokenWrap { padding: 14px; font-size: 13px; line-height: 2.6; min-height: 56px; word-break: break-word; }
+.tok { display: inline; cursor: pointer; border-radius: 3px; padding: 2px 4px; margin: 0 1px; transition: background .1s; }
+.tok:hover { background: #d8d4ca; }
+.tok.u { background: #fde68a; }
+.tok.w { background: #a7f3d0; }
+.tok.k { background: #bfdbfe; }
+.tok.sel { outline: 2px solid #c8622a; outline-offset: 1px; }
+
+#selBar { display: none; padding: 8px 14px; background: #e6e2d8; border-top: 1px solid #d4cfc4; font-size: 11px; align-items: center; gap: 8px; }
+#selBar.on { display: flex; }
+#selLabel { flex: 1; color: #4a4640; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.sbox { background: #ede9e0; border: 1px solid #d4cfc4; border-radius: 8px; margin-bottom: 14px; overflow: hidden; }
+#markList { padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.mrow { display: flex; align-items: flex-start; gap: 8px; background: #f5f2ec; border: 1px solid #d4cfc4; border-radius: 6px; padding: 7px 9px; }
+.mdot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 3px; }
+.mword { font-weight: 700; font-size: 11px; }
+.mmeta { font-size: 10px; color: #8a857e; margin-top: 2px; display: flex; gap: 4px; flex-wrap: wrap; }
+.mdel { color: #bbb; cursor: pointer; font-size: 14px; flex-shrink: 0; margin-left: auto; }
+.mdel:hover { color: #e24b4a; }
+
+.izn { margin: 10px 12px; border: 1.5px dashed #c4bfb4; border-radius: 7px; min-height: 90px; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; overflow: hidden; transition: border-color .15s; }
+.izn:hover { border-color: #c8622a; }
+.izn input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.izn img { width: 100%; height: auto; display: block; }
+.izhint { font-size: 11px; color: #aaa49e; text-align: center; line-height: 1.8; padding: 14px; pointer-events: none; }
+.izclear { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 50%; background: rgba(0,0,0,.55); color: #fff; border: none; font-size: 14px; cursor: pointer; display: none; align-items: center; justify-content: center; z-index: 3; line-height: 1; }
+.izn.hasimg .izhint { display: none; }
+.izn.hasimg .izclear { display: flex; }
+.izn.hasimg input[type=file] { display: none; }
+.scbtn { display: block; margin: 0 12px 12px; padding: 7px; font-family: inherit; font-size: 11px; background: #f5f2ec; border: 1px solid #c4bfb4; border-radius: 5px; cursor: pointer; color: #4a4640; width: calc(100% - 24px); }
+.scbtn:hover { border-color: #8a857e; }
+
+.grp { background: #ede9e0; border: 1px solid #d4cfc4; border-radius: 10px; margin-bottom: 20px; overflow: hidden; }
+.grp-head { padding: 10px 14px; background: #e6e2d8; border-bottom: 1px solid #d4cfc4; display: flex; align-items: center; gap: 8px; }
+.grp-name { font-size: 12px; font-weight: 700; color: #1a1814; flex: 1; background: transparent; border: none; outline: none; font-family: inherit; }
+.grp-name:focus { background: #f5f2ec; border-radius: 4px; padding: 1px 5px; }
+.grp-cards { display: flex; gap: 0; overflow-x: auto; }
+.grp-cards::-webkit-scrollbar { height: 4px; }
+.grp-cards::-webkit-scrollbar-thumb { background: #c4bfb4; border-radius: 2px; }
+.cmp-card { flex: 0 0 260px; border-right: 1px solid #d4cfc4; display: flex; flex-direction: column; }
+.cmp-card:last-child { border-right: none; }
+.cmp-img { background: #e0dcd4; flex-shrink: 0; }
+.cmp-img img { width: 100%; height: auto; display: block; }
+.cmp-img .no-img { padding: 28px 0; text-align: center; font-size: 11px; color: #aaa49e; }
+.cmp-body { padding: 10px 12px; flex: 1; }
+.cmp-lbl { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: #c8622a; margin-bottom: 5px; }
+.cmp-prompt { font-size: 11px; line-height: 1.8; background: #e6e2d8; border-radius: 4px; padding: 7px 9px; color: #4a4640; word-break: break-word; }
+.cmp-prompt .diff { background: #fde68a; border-radius: 2px; padding: 0 2px; }
+.cmp-foot { padding: 7px 12px; border-top: 1px solid #d4cfc4; display: flex; justify-content: flex-end; gap: 6px; }
+.card-lbl-input { width:100%; font-family:inherit; font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:#c8622a; background:transparent; border:none; outline:none; padding:0; margin-bottom:4px; }
+.card-lbl-input:focus { background:#f5f2ec; border-radius:3px; padding:1px 4px; }
+.card-lbl-input::placeholder { color:#d4a090; text-transform:none; letter-spacing:0; }
+.card-note-input { width:100%; margin-top:8px; height:56px; resize:none; font-family:inherit; font-size:11px; line-height:1.6; color:#4a4640; background:#e6e2d8; border:1px solid transparent; border-radius:4px; padding:6px 8px; outline:none; }
+.card-note-input:focus { border-color:#c4bfb4; background:#f5f2ec; }
+.card-note-input::placeholder { color:#aaa49e; }
+.add-crd { flex: 0 0 220px; border-right: none; padding: 14px; display: flex; flex-direction: column; gap: 8px; background: #f5f2ec; border-left: 1px dashed #c4bfb4; }
+.add-crd textarea, .add-crd input { font-family: inherit; font-size: 11px; border: 1px solid #c4bfb4; border-radius: 5px; padding: 7px 9px; background: #fff; color: #1a1814; outline: none; width: 100%; }
+.add-crd textarea { height: 66px; resize: none; }
+.add-crd textarea:focus, .add-crd input:focus { border-color: #8a857e; }
+.add-crd-label { font-size: 10px; color: #aaa49e; }
+
+.slbl { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: #8a857e; margin-bottom: 10px; }
+.vfbar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.vfbtn { font-family: inherit; font-size: 10px; padding: 4px 12px; border-radius: 4px; border: 1px solid #c4bfb4; background: #ede9e0; color: #8a857e; cursor: pointer; }
+.vfbtn:hover { color: #1a1814; border-color: #8a857e; }
+.vfbtn.on { background: #1a1814; color: #f5f2ec; border-color: #1a1814; }
+.vabar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.vabar input, .vabar select { font-family: inherit; font-size: 12px; padding: 7px 10px; border: 1px solid #c4bfb4; border-radius: 5px; background: #ede9e0; color: #1a1814; outline: none; }
+.vabar input:focus, .vabar select:focus { border-color: #8a857e; }
+.vabar input[placeholder="词汇或短语"] { width: 160px; }
+.vabar input[placeholder="备注/解释"] { flex: 1; min-width: 130px; }
+.vgrp { margin-bottom: 22px; }
+.vgt { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: #8a857e; border-bottom: 1px solid #d4cfc4; padding-bottom: 6px; margin-bottom: 10px; }
+.vgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.vc { background: #ede9e0; border: 1px solid #d4cfc4; border-radius: 7px; padding: 10px 12px; position: relative; }
+.vcdel { position: absolute; top: 8px; right: 8px; color: #bbb; cursor: pointer; font-size: 14px; }
+.vcdel:hover { color: #e24b4a; }
+.vcw { font-weight: 700; font-size: 13px; margin-bottom: 5px; padding-right: 18px; }
+.vctags { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 5px; }
+.tg { display: inline-block; font-size: 9px; padding: 2px 6px; border-radius: 3px; letter-spacing: .03em; }
+.tg.u { background: #fde68a; color: #92400e; }
+.tg.w { background: #a7f3d0; color: #065f46; }
+.tg.k { background: #bfdbfe; color: #1e3a5f; }
+.tg.cat { background: #e6e2d8; color: #8a857e; }
+.vcn { font-size: 11px; color: #8a857e; line-height: 1.5; }
+.empty { text-align: center; padding: 32px; font-size: 12px; color: #aaa49e; }
+</style>
+</head>
+<body>
+
+<nav>
+  <h1>MJ PROMPT 学习本</h1>
+  <button class="active" onclick="goPage('analyze',this)">拆解标注</button>
+  <button onclick="goPage('compare',this)">对比实验</button>
+  <button onclick="goPage('vocab',this)">词汇本</button>
+  <span style="width:1px;height:16px;background:rgba(245,242,236,.15);margin:0 4px"></span>
+  <button onclick="doExport()" style="font-family:inherit;font-size:11px;padding:5px 12px;border-radius:4px;border:1px solid rgba(245,242,236,.25);background:transparent;color:rgba(245,242,236,.7);cursor:pointer">导出</button>
+  <label style="font-family:inherit;font-size:11px;padding:5px 12px;border-radius:4px;border:1px solid rgba(245,242,236,.25);color:rgba(245,242,236,.7);cursor:pointer;margin:0">导入<input type="file" accept=".json" onchange="doImport(event)" style="display:none"></label>
+</nav>
+
+<div class="page on" id="page-analyze">
+  <div class="analyze-grid">
+    <div>
+      <p class="slbl">粘贴 Prompt</p>
+      <div class="box">
+        <textarea id="promptTA" placeholder="把 MJ prompt 粘贴在这里…&#10;&#10;例如：ink outline illustration, flat color, young scholar, --niji 7 --ar 2:3"></textarea>
+        <div class="bf">
+          <button class="btn btn-dk" onclick="doParse()">拆解词语</button>
+          <button class="btn" onclick="doClear()">清空</button>
+          <span class="hint-txt">点击选词（可多选）→ 点"标记选中词语"</span>
+        </div>
+      </div>
+      <div class="legend">
+        <span><i class="ldot" style="background:#fde68a"></i>不懂</span>
+        <span><i class="ldot" style="background:#a7f3d0"></i>想试试</span>
+        <span><i class="ldot" style="background:#bfdbfe"></i>已理解</span>
+      </div>
+      <div class="box" style="margin-top:0">
+        <div id="tokenWrap"></div>
+        <div id="selBar">
+          <span id="selLabel"></span>
+          <button class="btn btn-dk" onclick="openMulti()">标记选中词语</button>
+          <button class="btn" onclick="clearSel()">取消</button>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="sbox">
+        <div class="bh">我的标记</div>
+        <div id="markList"><p style="padding:10px 12px;font-size:11px;color:#aaa49e">拆解后点词语添加标记</p></div>
+      </div>
+      <div class="sbox">
+        <div class="bh">对应出图</div>
+        <div class="izn" id="iznA" ondragover="izov(event,'iznA')" ondragleave="izol('iznA')" ondrop="izod(event,'imgA')">
+          <input type="file" accept="image/*" onchange="izof(event,'imgA')">
+          <button class="izclear" onclick="izoc('imgA','iznA')">×</button>
+          <div class="izhint">↑<br>点击上传 / 直接粘贴<br>Ctrl+V 也可以</div>
+          <img id="imgA" style="display:none">
+        </div>
+        <button class="scbtn" onclick="saveToCompare()">保存到对比实验 →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-compare">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+    <p class="slbl" style="margin:0">对比实验</p>
+    <button class="btn btn-dk" onclick="newGroup()" style="font-size:11px">+ 新建实验组</button>
+  </div>
+  <div id="groupsWrap"></div>
+</div>
+
+<div class="page" id="page-vocab">
+  <p class="slbl">词汇积累</p>
+  <div class="vabar">
+    <input id="vW" placeholder="词汇或短语">
+    <select id="vS"><option value="u">不懂</option><option value="w">想试试</option><option value="k">已理解</option></select>
+    <select id="vC"><option value="">选标签…</option><option>人物外貌</option><option>风格画风</option><option>构图镜头</option><option>色彩光线</option><option>材质质感</option><option>情绪氛围</option><option>参数设置</option></select>
+    <input id="vN" placeholder="备注/解释">
+    <button class="btn btn-dk" onclick="addVocab()">添加</button>
+  </div>
+  <div class="vfbar" id="vfBar"></div>
+  <div id="vocabOut"></div>
+</div>
+
+<!-- POPUP: lives at root level, toggled only via JS style.display -->
+<div id="PP" style="position:fixed;z-index:99999;width:262px;background:#1a1814;color:#f5f2ec;border-radius:9px;padding:14px 16px;box-shadow:0 10px 40px rgba(0,0,0,.45);font-family:'Courier New',monospace;font-size:12px;display:none">
+  <div id="PP-phrase" style="font-size:12px;color:#e8a060;font-weight:700;margin-bottom:10px;word-break:break-all"></div>
+  <div style="font-size:10px;color:rgba(245,242,236,.4);margin-bottom:6px;letter-spacing:.05em">标记状态</div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+    <button id="PP-u" onclick="pickS('u')" style="font-family:inherit;font-size:10px;padding:4px 10px;border-radius:4px;border:1px solid #fde68a;color:#fde68a;background:transparent;cursor:pointer">不懂</button>
+    <button id="PP-w" onclick="pickS('w')" style="font-family:inherit;font-size:10px;padding:4px 10px;border-radius:4px;border:1px solid #a7f3d0;color:#a7f3d0;background:transparent;cursor:pointer">想试试</button>
+    <button id="PP-k" onclick="pickS('k')" style="font-family:inherit;font-size:10px;padding:4px 10px;border-radius:4px;border:1px solid #bfdbfe;color:#bfdbfe;background:transparent;cursor:pointer">已理解</button>
+    <button onclick="pickS('')" style="font-family:inherit;font-size:10px;padding:4px 10px;border-radius:4px;border:1px solid rgba(245,242,236,.2);color:rgba(245,242,236,.4);background:transparent;cursor:pointer">清除</button>
+  </div>
+  <div style="font-size:10px;color:rgba(245,242,236,.4);margin-bottom:6px;letter-spacing:.05em">标签分类</div>
+  <div id="PP-tags" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px"></div>
+  <textarea id="PP-note" placeholder="写备注（可选）…" style="width:100%;height:50px;resize:none;font-family:inherit;font-size:11px;padding:6px 8px;background:rgba(245,242,236,.08);border:1px solid rgba(245,242,236,.18);border-radius:4px;color:#f5f2ec;outline:none;margin-bottom:9px;display:block"></textarea>
+  <button onclick="doSave()" style="width:100%;padding:7px;font-family:inherit;font-size:11px;background:#c8622a;color:#f5f2ec;border:none;border-radius:4px;cursor:pointer">保存到词汇本</button>
+</div>
+
+<script>
+var CATS=['人物外貌','风格画风','构图镜头','色彩光线','材质质感','情绪氛围','参数设置'];
+var tokens=[],sel=[],marks={},vocabList=[],cmpGroups=[],imgData={};
+
+// ── localStorage ──
+var STORAGE_KEY='mj-prompt-lab-v1';
+
+function saveData(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      vocabList: vocabList,
+      cmpGroups: cmpGroups
+    }));
+  } catch(e){ console.warn('save failed',e); }
+}
+
+function loadData(){
+  try{
+    var raw=localStorage.getItem(STORAGE_KEY);
+    if(!raw) return;
+    var data=JSON.parse(raw);
+    if(Array.isArray(data.vocabList)) vocabList=data.vocabList;
+    if(Array.isArray(data.cmpGroups)) cmpGroups=data.cmpGroups;
+  } catch(e){ console.warn('load failed',e); }
+}
+var pPhrase='',pStatus='',pTag='',vFilter='all';
+
+function goPage(id,el){
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('on');});
+  document.querySelectorAll('nav button').forEach(function(b){b.classList.remove('active');});
+  document.getElementById('page-'+id).classList.add('on');
+  el.classList.add('active');
+  if(id==='vocab') renderVocab();
+}
+
+function doParse(){
+  var raw=document.getElementById('promptTA').value.trim();
+  if(!raw) return;
+  tokens=[];
+  var re=/--\w+(?:\s+\S+)?|[^,\s]+/g,m;
+  while((m=re.exec(raw))!==null) tokens.push(m[0]);
+  sel=[];
+  renderToks();
+  document.getElementById('selBar').classList.remove('on');
+  ppHide();
+}
+
+function renderToks(){
+  var d=document.getElementById('tokenWrap');
+  if(!tokens.length){d.innerHTML='';return;}
+  d.innerHTML=tokens.map(function(t,i){
+    var k=t.toLowerCase(),mk=marks[k];
+    var cls='tok';
+    if(mk&&mk.s) cls+=' '+mk.s;
+    if(sel.indexOf(i)!==-1) cls+=' sel';
+    var tip=mk&&mk.n?mk.n:'';
+    return '<span class="'+cls+'" title="'+xe(tip)+'" onclick="clickTok('+i+',event)">'+xe(t)+'</span>';
+  }).join(' ');
+}
+
+function clickTok(i,e){
+  e.stopPropagation();
+  ppHide();
+  var idx=sel.indexOf(i);
+  if(idx===-1) sel.push(i); else sel.splice(idx,1);
+  renderToks();
+  var bar=document.getElementById('selBar');
+  if(sel.length===0){
+    bar.classList.remove('on');
+  } else {
+    bar.classList.add('on');
+    var phrase=sel.slice().sort(function(a,b){return a-b;}).map(function(i){return tokens[i];}).join(' ');
+    document.getElementById('selLabel').textContent='已选：'+phrase;
+  }
+}
+
+function clearSel(){sel=[];renderToks();document.getElementById('selBar').classList.remove('on');ppHide();}
+
+function openMulti(){
+  if(sel.length===0) return;
+  var sorted=sel.slice().sort(function(a,b){return a-b;});
+  var phrase=sorted.map(function(i){return tokens[i];}).join(' ');
+  // Find rect of first selected token
+  var rect=null;
+  var spans=document.querySelectorAll('#tokenWrap .tok');
+  spans.forEach(function(sp){
+    var m=sp.getAttribute('onclick').match(/clickTok\((\d+)/);
+    if(m&&parseInt(m[1])===sorted[0]) rect=sp.getBoundingClientRect();
+  });
+  ppShow(phrase,rect);
+}
+
+function doClear(){
+  document.getElementById('promptTA').value='';
+  document.getElementById('tokenWrap').innerHTML='';
+  tokens=[];sel=[];marks={};
+  document.getElementById('selBar').classList.remove('on');
+  document.getElementById('markList').innerHTML='<p style="padding:10px 12px;font-size:11px;color:#aaa49e">拆解后点词语添加标记</p>';
+  izoc('imgA','iznA');
+  ppHide();
+}
+
+// Popup
+function ppShow(phrase,rect){
+  pPhrase=phrase;
+  var k=phrase.toLowerCase(),ex=marks[k]||{};
+  pStatus=ex.s||''; pTag=ex.c||'';
+  document.getElementById('PP-phrase').textContent=phrase;
+  document.getElementById('PP-note').value=ex.n||'';
+  refreshSBtns();
+  refreshTags();
+  var pop=document.getElementById('PP');
+  // Measure first (show offscreen)
+  pop.style.left='-9999px'; pop.style.top='-9999px'; pop.style.display='block';
+  var pw=pop.offsetWidth||262,ph=pop.offsetHeight||300;
+  var px,py;
+  if(rect){
+    px=rect.left; py=rect.bottom+8;
+    if(px+pw>window.innerWidth-8) px=window.innerWidth-pw-8;
+    if(px<8) px=8;
+    if(py+ph>window.innerHeight-8) py=rect.top-ph-8;
+    if(py<8) py=8;
+  } else {
+    px=(window.innerWidth-pw)/2;
+    py=(window.innerHeight-ph)/3;
+    if(px<8) px=8; if(py<8) py=8;
+  }
+  pop.style.left=Math.round(px)+'px';
+  pop.style.top=Math.round(py)+'px';
+}
+
+function ppHide(){document.getElementById('PP').style.display='none';}
+
+function refreshSBtns(){
+  var cm={u:'#fde68a',w:'#a7f3d0',k:'#bfdbfe'};
+  ['u','w','k'].forEach(function(s){
+    var b=document.getElementById('PP-'+s);
+    if(pStatus===s){b.style.background=cm[s];b.style.color='#1a1814';b.style.fontWeight='700';}
+    else{b.style.background='transparent';b.style.color=cm[s];b.style.fontWeight='400';}
+  });
+}
+
+function pickS(s){
+  pStatus=(pStatus===s)?'':s;
+  refreshSBtns();
+}
+
+function refreshTags(){
+  document.getElementById('PP-tags').innerHTML=CATS.map(function(cat){
+    var on=pTag===cat;
+    return '<button onclick="pickT(\''+cat+'\')" style="font-family:inherit;font-size:10px;padding:3px 8px;border-radius:3px;cursor:pointer;border:1px solid '+(on?'#c8622a':'rgba(245,242,236,.22)')+';background:'+(on?'#c8622a':'transparent')+';color:'+(on?'#f5f2ec':'rgba(245,242,236,.55)')+'">'+cat+'</button>';
+  }).join('');
+}
+
+function pickT(cat){
+  pTag=(pTag===cat)?'':cat;
+  refreshTags();
+}
+
+function doSave(){
+  if(!pPhrase) return;
+  var note=document.getElementById('PP-note').value.trim();
+  var k=pPhrase.toLowerCase();
+  marks[k]={s:pStatus,n:note,c:pTag};
+  var idx=vocabList.findIndex(function(v){return v.k===k;});
+  var entry={k:k,w:pPhrase,s:pStatus||'u',n:note,c:pTag};
+  if(idx!==-1) vocabList[idx]=entry; else vocabList.push(entry);
+  sel=[];
+  document.getElementById('selBar').classList.remove('on');
+  ppHide();
+  renderToks();
+  renderMarks();
+  saveData();
+}
+
+function renderMarks(){
+  var el=document.getElementById('markList');
+  var entries=Object.entries(marks).filter(function(e){return e[1].s||e[1].n;});
+  if(!entries.length){el.innerHTML='<p style="padding:10px 12px;font-size:11px;color:#aaa49e">还没有标记</p>';return;}
+  var cm={u:'#fde68a',w:'#a7f3d0',k:'#bfdbfe'};
+  var lm={u:'不懂',w:'想试试',k:'已理解'};
+  el.innerHTML=entries.map(function(e){
+    return '<div class="mrow"><div class="mdot" style="background:'+(cm[e[1].s]||'#ccc')+'"></div>'+
+      '<div style="flex:1"><div class="mword">'+xe(e[0])+'</div>'+
+      '<div class="mmeta">'+
+      (e[1].s?'<span class="tg '+e[1].s+'">'+lm[e[1].s]+'</span>':'')+
+      (e[1].c?'<span class="tg cat">'+xe(e[1].c)+'</span>':'')+
+      (e[1].n?'<span style="color:#8a857e">'+xe(e[1].n)+'</span>':'')+
+      '</div></div>'+
+      '<span class="mdel" onclick="delMark(\''+e[0].replace(/'/g,"\\'")+'\')" >×</span></div>';
+  }).join('');
+}
+
+function delMark(k){delete marks[k];renderToks();renderMarks();}
+
+// Images
+function izov(e,z){e.preventDefault();document.getElementById(z).style.borderColor='#c8622a';}
+function izol(z){document.getElementById(z).style.borderColor='';}
+function izod(e,id){e.preventDefault();izol(id==='imgA'?'iznA':'iznB');var f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/'))izLoad(f,id);}
+function izof(e,id){if(e.target.files[0])izLoad(e.target.files[0],id);}
+function izLoad(f,id){var r=new FileReader();r.onload=function(e){izSet(id,e.target.result);};r.readAsDataURL(f);}
+function izSet(id,src){var img=document.getElementById(id);var z=id==='imgA'?'iznA':'iznB';img.src=src;img.style.display='block';document.getElementById(z).classList.add('hasimg');imgData[id]=src;}
+function izoc(id,z){var img=document.getElementById(id);if(!img)return;img.src='';img.style.display='none';var zn=document.getElementById(z);if(zn)zn.classList.remove('hasimg');delete imgData[id];}
+
+document.addEventListener('paste',function(e){
+  var items=e.clipboardData&&e.clipboardData.items;
+  if(!items)return;
+  for(var i=0;i<items.length;i++){
+    if(items[i].type.startsWith('image/')){
+      var pg=document.querySelector('.page.on').id;
+      izLoad(items[i].getAsFile(),pg==='page-compare'?'imgB':'imgA');
+      e.preventDefault();break;
+    }
+  }
+});
+
+// Compare
+function saveToCompare(){
+  var p=document.getElementById('promptTA').value.trim();
+  if(!p){alert('请先粘贴 Prompt');return;}
+  if(!cmpGroups.length) newGroup();
+  var gid=cmpGroups[cmpGroups.length-1].id;
+  pushCard(gid,p,imgData['imgA']||'','从拆解导入');
+  goPage('compare',document.querySelectorAll('nav button')[1]);
+}
+function doAddCard(){
+  var p=document.getElementById('newP').value.trim();
+  if(!p)return;
+  pushCmp(p,imgData['imgB']||'',document.getElementById('newL').value.trim());
+  document.getElementById('newP').value='';document.getElementById('newL').value='';
+  izoc('imgB','iznB');
+}
+function pushCmp(p,src,lbl){cmpCards.push({id:Date.now(),p:p,src:src,lbl:lbl});renderCmp();}
+function renderCmp(){
+  var g=document.getElementById('cmpGrid');
+  var cards=cmpCards.map(function(c){
+    return '<div class="cmp-card"><div class="cmp-img">'+(c.src?'<img src="'+c.src+'">':'<div style="padding:20px;text-align:center;font-size:11px;color:#aaa49e">暂无图片</div>')+'</div>'+
+      '<div class="cmp-body">'+(c.lbl?'<div class="cmp-lbl">'+xe(c.lbl)+'</div>':'')+'<div class="cmp-prompt">'+xe(c.p)+'</div></div>'+
+      '<div class="cmp-foot"><button class="btn" onclick="delCmp('+c.id+')">删除</button></div></div>';
+  }).join('');
+  var add='<div class="add-crd" id="addCard"><p style="font-size:11px;color:#aaa49e">+ 新增实验</p>'+
+    '<textarea id="newP" placeholder="粘贴 Prompt…"></textarea>'+
+    '<div class="izn" id="iznB" ondragover="izov(event,\'iznB\')" ondragleave="izol(\'iznB\')" ondrop="izod(event,\'imgB\')">'+
+    '<input type="file" accept="image/*" onchange="izof(event,\'imgB\')">'+
+    '<button class="izclear" onclick="izoc(\'imgB\',\'iznB\')">×</button>'+
+    '<div class="izhint">↑ 上传 / 粘贴图片</div><img id="imgB" style="display:none"></div>'+
+    '<input id="newL" placeholder="备注：改了什么？效果如何？">'+
+    '<button class="btn btn-dk" onclick="doAddCard()">添加</button></div>';
+  g.innerHTML=cards+add;
+}
+function delCmp(id){cmpCards=cmpCards.filter(function(c){return c.id!==id;});renderCmp();}
+
+
+// init
+loadData();
+document.addEventListener('DOMContentLoaded',function(){
+  if(vocabList.length) renderVocab();
+  renderGroups();
+});
+
+// ── Compare groups ──
+function newGroup(){
+  var id=Date.now();
+  cmpGroups.push({id:id,name:'实验组 '+cmpGroups.length,cards:[]});
+  renderGroups();
+  saveData();
+  setTimeout(function(){
+    var inp=document.querySelector('.grp-name[data-gid="'+id+'"]');
+    if(inp){inp.focus();inp.select();}
+  },80);
+}
+function renameGroup(gid,val){
+  var g=cmpGroups.find(function(g){return g.id===gid;});
+  if(g){ g.name=val||g.name; saveData(); }
+}
+function delGroup(gid){
+  if(!confirm('删除整个实验组？')) return;
+  cmpGroups=cmpGroups.filter(function(g){return g.id!==gid;});
+  renderGroups();
+  saveData();
+}
+function pushCard(gid,p,src,lbl,note){
+  var g=cmpGroups.find(function(g){return g.id===gid;});
+  if(!g) return;
+  g.cards.push({id:Date.now(),p:p,src:src,lbl:lbl,note:note||''});
+  renderGroups();
+  saveData();
+}
+function delCard(gid,cid){
+  var g=cmpGroups.find(function(g){return g.id===gid;});
+  if(!g) return;
+  g.cards=g.cards.filter(function(c){return c.id!==cid;});
+  renderGroups();
+  saveData();
+}
+function updateCardNote(gid,cid,val){
+  var g=cmpGroups.find(function(g){return g.id===gid;});
+  if(!g) return;
+  var card=g.cards.find(function(c){return c.id===cid;});
+  if(card){ card.note=val; saveData(); }
+}
+function updateCardLbl(gid,cid,val){
+  var g=cmpGroups.find(function(g){return g.id===gid;});
+  if(!g) return;
+  var card=g.cards.find(function(c){return c.id===cid;});
+  if(card){ card.lbl=val; saveData(); }
+}
+function replaceImg(gid,cid,e){
+  var f=e.target.files[0];
+  if(!f) return;
+  var g=cmpGroups.find(function(g){return g.id===gid;});
+  if(!g) return;
+  var card=g.cards.find(function(c){return c.id===cid;});
+  if(!card) return;
+  var r=new FileReader();
+  r.onload=function(ev){ card.src=ev.target.result; renderGroups(); saveData(); };
+  r.readAsDataURL(f);
+}
+function addCardToGroup(gid){
+  var pEl=document.getElementById('p_'+gid);
+  var lEl=document.getElementById('l_'+gid);
+  if(!pEl) return;
+  var p=pEl.value.trim();
+  if(!p) return;
+  pushCard(gid,p,'',lEl?lEl.value.trim():'','');
+}
+function diffPrompt(p,others){
+  if(!others.length) return xe(p);
+  var ow={};
+  others.forEach(function(op){
+    op.split(/[\s,]+/).forEach(function(w){if(w) ow[w.toLowerCase()]=true;});
+  });
+  return p.split(/(,\s*|\s+)/).map(function(chunk){
+    // skip pure punctuation/whitespace — never highlight these
+    if(!chunk.trim() || /^[,\s]+$/.test(chunk)) return xe(chunk);
+    var low=chunk.trim().replace(/^--/,'').toLowerCase();
+    return ow[low] ? xe(chunk) : '<span class="diff">'+xe(chunk)+'</span>';
+  }).join('');
+}
+function renderGroups(){
+  var wrap=document.getElementById('groupsWrap');
+  if(!wrap) return;
+  if(!cmpGroups.length){
+    wrap.innerHTML='<div style="text-align:center;padding:48px;font-size:12px;color:#aaa49e">还没有实验组<br>点上方"+ 新建实验组"开始</div>';
+    return;
+  }
+  wrap.innerHTML=cmpGroups.map(function(g){
+    var allP=g.cards.map(function(c){return c.p;});
+    var cards=g.cards.map(function(c,idx){
+      var others=allP.filter(function(_,i){return i!==idx;});
+      var imgHtml=c.src?'<img src="'+c.src+'">':'<div class="no-img">暂无图片</div>';
+      return '<div class="cmp-card">'+
+        '<div class="cmp-img">'+imgHtml+'</div>'+
+        '<div class="cmp-body">'+
+        '<input class="card-lbl-input" placeholder="变量备注（改了什么）" value="'+xe(c.lbl||'')+'" onchange="updateCardLbl('+g.id+','+c.id+',this.value)" onblur="updateCardLbl('+g.id+','+c.id+',this.value)">'+
+        '<div class="cmp-prompt" style="margin-top:6px">'+diffPrompt(c.p,others)+'</div>'+
+        '<textarea class="card-note-input" placeholder="备注…" onchange="updateCardNote('+g.id+','+c.id+',this.value)" onblur="updateCardNote('+g.id+','+c.id+',this.value)">'+xe(c.note||'')+'</textarea>'+
+        '</div>'+
+        '<div class="cmp-foot">'+
+        '<label class="btn" style="cursor:pointer;font-size:10px">换图<input type="file" accept="image/*" style="display:none" onchange="replaceImg('+g.id+','+c.id+',event)"></label>'+
+        '<button class="btn" style="font-size:10px" onclick="delCard('+g.id+','+c.id+')">删除</button>'+
+        '</div></div>';
+    }).join('');
+    var addForm='<div class="add-crd">'+
+      '<div class="add-crd-label">+ 新增对比</div>'+
+      '<textarea id="p_'+g.id+'" placeholder="粘贴 Prompt…"></textarea>'+
+      '<input id="l_'+g.id+'" placeholder="变量备注（改了什么）">'+
+      '<button class="btn btn-dk" style="font-size:10px;margin-top:2px" onclick="addCardToGroup('+g.id+')">添加</button>'+
+      '</div>';
+    return '<div class="grp">'+
+      '<div class="grp-head">'+
+      '<input class="grp-name" data-gid="'+g.id+'" value="'+xe(g.name)+'" onchange="renameGroup('+g.id+',this.value)" onblur="renameGroup('+g.id+',this.value)">'+
+      '<span style="font-size:10px;color:#aaa49e;margin-right:8px">'+g.cards.length+' 张</span>'+
+      '<button class="btn" style="font-size:10px" onclick="delGroup('+g.id+')">删除组</button>'+
+      '</div>'+
+      '<div class="grp-cards">'+cards+addForm+'</div>'+
+      '</div>';
+  }).join('');
+}
+
+// Vocab
+function addVocab(){
+  var w=document.getElementById('vW').value.trim();if(!w)return;
+  var k=w.toLowerCase(),s=document.getElementById('vS').value,cat=document.getElementById('vC').value,n=document.getElementById('vN').value.trim();
+  var idx=vocabList.findIndex(function(v){return v.k===k;});
+  var entry={k:k,w:w,s:s,n:n,c:cat};
+  if(idx!==-1)vocabList[idx]=entry;else vocabList.push(entry);
+  document.getElementById('vW').value='';document.getElementById('vN').value='';
+  renderVocab();
+  saveData();
+}
+function setVF(f,el){
+  vFilter=f;
+  document.querySelectorAll('.vfbtn').forEach(function(b){b.classList.remove('on');});
+  el.classList.add('on');
+  renderVocab();
+}
+function renderVocab(){
+  var bar=document.getElementById('vfBar');
+  var cats={};vocabList.forEach(function(v){if(v.c)cats[v.c]=true;});
+  bar.innerHTML='<button class="vfbtn'+(vFilter==='all'?' on':'')+'" onclick="setVF(\'all\',this)">全部</button>'+
+    CATS.filter(function(c){return cats[c];}).map(function(c){
+      return '<button class="vfbtn'+(vFilter===c?' on':'')+'" onclick="setVF(\''+c+'\',this)">'+c+'</button>';
+    }).join('');
+  var list=vFilter==='all'?vocabList:vocabList.filter(function(v){return v.c===vFilter;});
+  var g=document.getElementById('vocabOut');
+  if(!list.length){g.innerHTML='<div class="empty">'+(vocabList.length?'此分类暂无词汇':'词汇本是空的<br>标记后会自动出现在这里')+'</div>';return;}
+  var lm={u:'不懂',w:'想试试',k:'已理解'};
+  var groups={},noCat=[];
+  list.forEach(function(v){v.c?(groups[v.c]=groups[v.c]||[]).push(v):noCat.push(v);});
+  function card(v){
+    var sk=v.k.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return '<div class="vc"><span class="vcdel" onclick="delV(\''+sk+'\')">×</span>'+
+      '<div class="vcw">'+xe(v.w)+'</div>'+
+      '<div class="vctags">'+(v.s?'<span class="tg '+v.s+'">'+lm[v.s]+'</span>':'')+(v.c?'<span class="tg cat">'+xe(v.c)+'</span>':'')+'</div>'+
+      '<div class="vcn">'+xe(v.n||'—')+'</div></div>';
+  }
+  var html='';
+  CATS.filter(function(c){return groups[c];}).forEach(function(c){
+    html+='<div class="vgrp"><div class="vgt">'+c+' ('+groups[c].length+')</div><div class="vgrid">'+groups[c].map(card).join('')+'</div></div>';
+  });
+  if(noCat.length)html+='<div class="vgrp"><div class="vgt">未分类 ('+noCat.length+')</div><div class="vgrid">'+noCat.map(card).join('')+'</div></div>';
+  g.innerHTML=html;
+}
+function delV(k){vocabList=vocabList.filter(function(v){return v.k!==k;});renderVocab();saveData();}
+
+function xe(t){return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// Close popup on outside mousedown
+document.addEventListener('mousedown',function(e){
+  var pop=document.getElementById('PP');
+  if(pop.style.display!=='block') return;
+  var r=pop.getBoundingClientRect();
+  if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom){
+    ppHide();sel=[];renderToks();document.getElementById('selBar').classList.remove('on');
+  }
+});
+
+// ── Export ──
+function doExport(){
+  var data={
+    version:1,
+    exportedAt:new Date().toISOString(),
+    vocabList:vocabList,
+    groups:cmpGroups
+  };
+  var json=JSON.stringify(data,null,2);
+  var blob=new Blob([json],{type:'application/json'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;
+  var d=new Date();
+  var ds=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+  a.download='mj-prompt-'+ds+'.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function pad(n){return n<10?'0'+n:String(n);}
+
+// ── Import ──
+function doImport(e){
+  var file=e.target.files[0];
+  if(!file) return;
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    try{
+      var data=JSON.parse(ev.target.result);
+      if(!data.version) throw new Error('格式不对');
+      var merged=0,added=0;
+      // Merge vocabList
+      if(Array.isArray(data.vocabList)){
+        data.vocabList.forEach(function(v){
+          var idx=vocabList.findIndex(function(x){return x.k===v.k;});
+          if(idx!==-1){vocabList[idx]=v;merged++;}
+          else{vocabList.push(v);added++;}
+        });
+      }
+      // Merge groups
+      if(Array.isArray(data.groups)){
+        data.groups.forEach(function(g){
+          if(!cmpGroups.find(function(x){return x.id===g.id;})){
+            cmpGroups.push(g);
+          }
+        });
+      }
+      // Refresh UI
+      renderVocab();
+      if(document.getElementById('groupsWrap')) renderGroups();
+      saveData();
+      var msg='导入成功：词汇新增 '+added+' 条，合并更新 '+merged+' 条';
+      if(data.groups&&data.groups.length) msg+='，实验组 '+data.groups.length+' 组';
+      alert(msg);
+    } catch(err){
+      alert('导入失败：'+err.message);
+    }
+    e.target.value='';
+  };
+  reader.readAsText(file);
+}
+</script>
+</body>
+</html>
